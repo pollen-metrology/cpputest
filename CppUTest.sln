@@ -1,12 +1,11 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual C++ Express 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AllTests", "tests\AllTests.vcproj", "{E66A12BB-1E17-4CFE-A358-9E0FA85E0F15}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC28C821-4AB8-458F-A821-C6E65607B781} = {EC28C821-4AB8-458F-A821-C6E65607B781}
-	EndProjectSection
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AllTests", "tests\AllTests.vcxproj", "{E66A12BB-1E17-4CFE-A358-9E0FA85E0F15}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CppUTest", "CppUTest.vcproj", "{EC28C821-4AB8-458F-A821-C6E65607B781}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CppUTest", "CppUTest.vcxproj", "{EC28C821-4AB8-458F-A821-C6E65607B781}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
