@@ -29,6 +29,7 @@
 #include "CppUTest/CommandLineTestRunner.h"
 #include "CppUTest/TestOutput.h"
 #include "CppUTest/JUnitTestOutput.h"
+#include "CppUTest/TeamCityTestOutput.h"
 #include "CppUTest/TestRegistry.h"
 
 int CommandLineTestRunner::RunAllTests(int ac, char** av)
@@ -87,9 +88,11 @@ void CommandLineTestRunner::initializeTestRun()
 {
     registry_->setGroupFilters(arguments_->getGroupFilters());
     registry_->setNameFilters(arguments_->getNameFilters());
+	
     if (arguments_->isVerbose()) output_->verbose();
     if (arguments_->isColor()) output_->color();
     if (arguments_->runTestsInSeperateProcess()) registry_->setRunTestsInSeperateProcess();
+    if (arguments_->isRunIgnored()) registry_->setRunIgnored();
 }
 
 int CommandLineTestRunner::runAllTests()
@@ -121,6 +124,11 @@ int CommandLineTestRunner::runAllTests()
     }
 
     return failureCount;
+}
+
+TestOutput* CommandLineTestRunner::createTeamCityOutput()
+{
+    return new TeamCityTestOutput;
 }
 
 TestOutput* CommandLineTestRunner::createJUnitOutput(const SimpleString& packageName)
@@ -157,8 +165,9 @@ bool CommandLineTestRunner::parseArguments(TestPlugin* plugin)
     output_= createJUnitOutput(arguments_->getPackageName());
     if (arguments_->isVerbose())
       output_ = createCompositeOutput(output_, createConsoleOutput());
-  }
-  else
+  } else if (arguments_->isTeamCityOutput()) {
+    output_ = createTeamCityOutput();
+  } else
     output_ = createConsoleOutput();
   return true;
 }

@@ -30,7 +30,7 @@
 #include "CppUTestExt/MockSupport.h"
 #include "CppUTestExt/MockExpectedCall.h"
 #include "CppUTestExt/MockFailure.h"
-#include "MockFailureTest.h"
+#include "MockFailureReporterForTest.h"
 
 TEST_GROUP(MockSupportTest)
 {
@@ -56,6 +56,13 @@ TEST(MockSupportTest, setDataForIntegerValues)
     int expected_data = 10;
     mock().setData("data", expected_data);
     LONGS_EQUAL(expected_data, mock().getData("data").getIntValue());
+}
+
+TEST(MockSupportTest, setDataForBooleanValues)
+{
+    bool expected_data = true;
+    mock().setData("data", expected_data);
+    CHECK_EQUAL(expected_data, mock().getData("data").getBoolValue());
 }
 
 TEST(MockSupportTest, hasDataBeenSet)
@@ -199,7 +206,7 @@ static void crashMethod()
     cpputestHasCrashed = true;
 }
 
-static void crashOnFailureTestFunction_(void)
+static void unexpectedCallTestFunction_(void)
 {
     mock().actualCall("unexpected");
 } // LCOV_EXCL_LINE
@@ -210,7 +217,7 @@ TEST(MockSupportTestWithFixture, shouldCrashOnFailure)
 {
     mock().crashOnFailure(true);
     UtestShell::setCrashMethod(crashMethod);
-    fixture.setTestFunction(crashOnFailureTestFunction_);
+    fixture.setTestFunction(unexpectedCallTestFunction_);
 
     fixture.runAllTests();
 
@@ -224,12 +231,27 @@ TEST(MockSupportTestWithFixture, ShouldNotCrashOnFailureAfterCrashMethodWasReset
 {
     cpputestHasCrashed = false;
     UtestShell::setCrashMethod(crashMethod);
-    fixture.setTestFunction(crashOnFailureTestFunction_);
+    fixture.setTestFunction(unexpectedCallTestFunction_);
     UtestShell::resetCrashMethod();
 
     fixture.runAllTests();
 
     fixture.assertPrintContains("Unexpected call to function: unexpected");
     CHECK_FALSE(cpputestHasCrashed);
+}
+
+TEST(MockSupportTestWithFixture, failedMockShouldFailAgainWhenRepeated)
+{
+    fixture.setTestFunction(unexpectedCallTestFunction_);
+    int repeatCount = 2;
+    while(repeatCount--)
+    {
+        fixture.runAllTests();
+        fixture.assertPrintContains("Unexpected call to function: unexpected");
+        fixture.assertPrintContains("Errors (1 failures, 1 tests, 1 ran, 0 checks, 0 ignored, 0 filtered out");
+        fixture.output_->flush();
+        delete fixture.result_;
+        fixture.result_ = new TestResult(*fixture.output_);
+    }
 }
 

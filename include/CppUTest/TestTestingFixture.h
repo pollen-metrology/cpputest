@@ -44,6 +44,8 @@ public:
 
         registry_->setCurrentRegistry(registry_);
         registry_->addTest(genTest_);
+
+        lineOfCodeExecutedAfterCheck = false;
     }
 
     virtual ~TestTestingFixture()
@@ -75,6 +77,12 @@ public:
         genTest_->teardown_ = teardownFunction;
     }
 
+    void runTestWithMethod(void(*method)())
+    {
+        setTestFunction(method);
+        runAllTests();
+    }
+
     void runAllTests()
     {
         registry_->runAllTests(*result_);
@@ -100,18 +108,30 @@ public:
         return genTest_->hasFailed();
     }
 
-
     void assertPrintContains(const SimpleString& contains)
     {
-        assertPrintContains(output_, contains);
+        assertPrintContains(getOutput(), contains);
     }
 
-    static void assertPrintContains(StringBufferTestOutput* output,
-            const SimpleString& contains)
+    const SimpleString& getOutput()
     {
-        STRCMP_CONTAINS(contains.asCharString(), output->getOutput().asCharString());
-
+        return output_->getOutput();
     }
+
+    static void assertPrintContains(const SimpleString& output, const SimpleString& contains)
+    {
+        STRCMP_CONTAINS(contains.asCharString(), output.asCharString());
+    }
+
+    int getRunCount()
+    {
+    	return result_->getRunCount();
+    }
+
+    void checkTestFailsWithProperTestLocation(const char* text, const char* file, int line);
+
+    static void lineExecutedAfterCheck();
+    static bool lineOfCodeExecutedAfterCheck;
 
     TestRegistry* registry_;
     ExecFunctionTestShell* genTest_;

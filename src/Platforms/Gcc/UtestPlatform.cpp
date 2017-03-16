@@ -31,6 +31,8 @@
 #undef free
 #undef calloc
 #undef realloc
+#undef strdup
+#undef strndup
 
 #include <sys/time.h>
 #include <time.h>
@@ -53,7 +55,7 @@
 static jmp_buf test_exit_jmp_buf[10];
 static int jmp_buf_index = 0;
 
-#ifndef HAVE_FORK
+#ifndef CPPUTEST_HAVE_FORK
 
 static void GccPlatformSpecificRunTestInASeperateProcess(UtestShell* shell, TestPlugin*, TestResult* result)
 {
@@ -232,14 +234,21 @@ void (*PlatformSpecificFree)(void* memory) = free;
 void* (*PlatformSpecificMemCpy)(void*, const void*, size_t) = memcpy;
 void* (*PlatformSpecificMemset)(void*, int, size_t) = memset;
 
+/* GCC 4.9.x introduces -Wfloat-conversion, which causes a warning / error
+ * in GCC's own (macro) implementation of isnan() and isinf().
+ */
+#if defined(__GNUC__) && (__GNUC__ >= 5 || (__GNUC__ == 4 && __GNUC_MINOR__ > 8))
+#pragma GCC diagnostic ignored "-Wfloat-conversion"
+#endif
+
 static int IsNanImplementation(double d)
 {
-    return isnan((float)d);
+    return isnan(d);
 }
 
 static int IsInfImplementation(double d)
 {
-    return isinf((float)d);
+    return isinf(d);
 }
 
 double (*PlatformSpecificFabs)(double) = fabs;

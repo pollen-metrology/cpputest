@@ -137,7 +137,7 @@ UtestShell::UtestShell() :
 }
 
 UtestShell::UtestShell(const char* groupName, const char* testName, const char* fileName, int lineNumber) :
-        group_(groupName), name_(testName), file_(fileName), lineNumber_(lineNumber), next_(NULL), isRunAsSeperateProcess_(false), hasFailed_(false)
+    group_(groupName), name_(testName), file_(fileName), lineNumber_(lineNumber), next_(NULL), isRunAsSeperateProcess_(false), hasFailed_(false)
 {
 }
 
@@ -176,6 +176,7 @@ void UtestShell::crash()
 
 void UtestShell::runOneTest(TestPlugin* plugin, TestResult& result)
 {
+    hasFailed_ = false;
     HelperTestRunInfo runInfo(this, plugin, &result);
     if (isRunInSeperateProcess())
         PlatformSpecificSetJmp(helperDoRunOneTestSeperateProcess, &runInfo);
@@ -284,6 +285,11 @@ void UtestShell::setRunInSeperateProcess()
 }
 
 
+void UtestShell::setRunIgnored()
+{
+
+}
+
 void UtestShell::setFileName(const char* fileName)
 {
     file_ = fileName;
@@ -338,6 +344,11 @@ void UtestShell::failWith(const TestFailure& failure, const TestTerminator& term
 {
     hasFailed_ = true;
     getTestResult()->addFailure(failure);
+    terminator.exitCurrentTest();
+} // LCOV_EXCL_LINE
+
+void UtestShell::exitTest(const TestTerminator& terminator)
+{
     terminator.exitCurrentTest();
 } // LCOV_EXCL_LINE
 
@@ -418,6 +429,39 @@ void UtestShell::assertUnsignedLongsEqual(unsigned long expected, unsigned long 
         failWith(UnsignedLongsEqualFailure (this, fileName, lineNumber, expected, actual, text), testTerminator);
 }
 
+void UtestShell::assertLongLongsEqual(cpputest_longlong expected, cpputest_longlong actual, const char* text, const char* fileName, int lineNumber, const TestTerminator& testTerminator)
+{
+    getTestResult()->countCheck();
+#ifdef CPPUTEST_USE_LONG_LONG
+    if (expected != actual)
+        failWith(LongLongsEqualFailure(this, fileName, lineNumber, expected, actual, text), testTerminator);
+#else
+    (void)expected;
+    (void)actual;
+    failWith(FeatureUnsupportedFailure(this, fileName, lineNumber, "CPPUTEST_USE_LONG_LONG", text), testTerminator);
+#endif
+}
+
+void UtestShell::assertUnsignedLongLongsEqual(cpputest_ulonglong expected, cpputest_ulonglong actual, const char* text, const char* fileName, int lineNumber, const TestTerminator& testTerminator)
+{
+    getTestResult()->countCheck();
+#ifdef CPPUTEST_USE_LONG_LONG
+    if (expected != actual)
+        failWith(UnsignedLongLongsEqualFailure(this, fileName, lineNumber, expected, actual, text), testTerminator);
+#else
+    (void)expected;
+    (void)actual;
+    failWith(FeatureUnsupportedFailure(this, fileName, lineNumber, "CPPUTEST_USE_LONG_LONG", text), testTerminator);
+#endif
+}
+
+void UtestShell::assertSignedBytesEqual(signed char expected, signed char actual, const char* text, const char *fileName, int lineNumber, const TestTerminator& testTerminator)
+{
+    getTestResult()->countCheck();
+    if (expected != actual)
+        failWith(SignedBytesEqualFailure (this, fileName, lineNumber, expected, actual, text), testTerminator);
+}
+
 void UtestShell::assertPointersEqual(const void* expected, const void* actual, const char* text, const char* fileName, int lineNumber, const TestTerminator& testTerminator)
 {
     getTestResult()->countCheck();
@@ -425,11 +469,11 @@ void UtestShell::assertPointersEqual(const void* expected, const void* actual, c
         failWith(EqualsFailure(this, fileName, lineNumber, StringFrom(expected), StringFrom(actual), text), testTerminator);
 }
 
-void UtestShell::assertFunctionPointersEqual(void (*expected)(), void (*actual)(), const char* text, const char* fileName, int lineNumber)
+void UtestShell::assertFunctionPointersEqual(void (*expected)(), void (*actual)(), const char* text, const char* fileName, int lineNumber, const TestTerminator& testTerminator)
 {
     getTestResult()->countCheck();
     if (expected != actual)
-        failWith(EqualsFailure(this, fileName, lineNumber, StringFrom(expected), StringFrom(actual), text));
+        failWith(EqualsFailure(this, fileName, lineNumber, StringFrom(expected), StringFrom(actual), text), testTerminator);
 }
 
 void UtestShell::assertDoublesEqual(double expected, double actual, double threshold, const char* text, const char* fileName, int lineNumber, const TestTerminator& testTerminator)
@@ -621,12 +665,12 @@ void ExecFunctionTest::teardown()
 }
 
 /////////////// IgnoredUtestShell /////////////
-IgnoredUtestShell::IgnoredUtestShell()
+IgnoredUtestShell::IgnoredUtestShell(): runIgnored_(false)
 {
 }
 
 IgnoredUtestShell::IgnoredUtestShell(const char* groupName, const char* testName, const char* fileName, int lineNumber) :
-   UtestShell(groupName, testName, fileName, lineNumber)
+   UtestShell(groupName, testName, fileName, lineNumber), runIgnored_(false)
 {
 }
 
@@ -636,17 +680,32 @@ IgnoredUtestShell::~IgnoredUtestShell()
 
 bool IgnoredUtestShell::willRun() const
 {
+    if (runIgnored_) return UtestShell::willRun();
+
     return false;
 }
 
 SimpleString IgnoredUtestShell::getMacroName() const
 {
+    if (runIgnored_) return "TEST";
+
     return "IGNORE_TEST";
 }
 
-void IgnoredUtestShell::runOneTest(TestPlugin* /* plugin */, TestResult& result)
+void IgnoredUtestShell::runOneTest(TestPlugin* plugin, TestResult& result)
 {
+    if (runIgnored_)
+    {
+        UtestShell::runOneTest(plugin, result);
+        return;
+    }
+
     result.countIgnored();
+}
+
+void IgnoredUtestShell::setRunIgnored()
+{
+    runIgnored_ = true;
 }
 
 

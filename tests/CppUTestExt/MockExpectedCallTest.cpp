@@ -28,7 +28,7 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockCheckedExpectedCall.h"
 #include "CppUTestExt/MockFailure.h"
-#include "MockFailureTest.h"
+#include "MockFailureReporterForTest.h"
 
 class TypeForTestingExpectedFunctionCall
 {
@@ -187,6 +187,14 @@ TEST(MockExpectedCall, callWithIntegerParameter)
     STRCMP_EQUAL("int", call->getInputParameterType("integer").asCharString());
     LONGS_EQUAL(1, call->getInputParameter("integer").getIntValue());
     CHECK(call->hasInputParameterWithName("integer"));
+}
+
+TEST(MockExpectedCall, callWithBooleanParameter)
+{
+    call->withParameter("boolean", true);
+    STRCMP_EQUAL("bool", call->getInputParameterType("boolean").asCharString());
+    CHECK_EQUAL(true, call->getInputParameter("boolean").getBoolValue());
+    CHECK(call->hasInputParameterWithName("boolean"));
 }
 
 TEST(MockExpectedCall, callWithUnsignedLongIntegerParameter)
@@ -377,9 +385,9 @@ TEST(MockExpectedCall, callWithThreeDifferentParameter)
     DOUBLES_EQUAL(0.12, call->getInputParameter("double").getDoubleValue(), 0.05);
 }
 
-TEST(MockExpectedCall, withoutANameItsFulfilled)
+TEST(MockExpectedCall, withoutANameItsNotFulfilled)
 {
-    CHECK(call->isFulfilled());
+    CHECK(!call->isFulfilled());
 }
 
 TEST(MockExpectedCall, withANameItsNotFulfilled)
@@ -440,7 +448,7 @@ TEST(MockExpectedCall, toStringForMultipleInputParameters)
     call->withParameter("string", "value");
     call->withParameter("integer", int_value);
     call->withParameter("unsigned-integer", uint_value);
-    STRCMP_EQUAL("name -> const char* string: <value>, int integer: <10>, unsigned int unsigned-integer: <         7 (0x00000007)>", call->callToString().asCharString());
+    STRCMP_EQUAL("name -> const char* string: <value>, int integer: <10 (0xa)>, unsigned int unsigned-integer: <7 (0x7)>", call->callToString().asCharString());
 }
 
 TEST(MockExpectedCall, toStringForMultipleInputAndOutputParameters)
@@ -454,7 +462,7 @@ TEST(MockExpectedCall, toStringForMultipleInputAndOutputParameters)
     call->withParameter("integer", int_value);
     call->withParameter("unsigned-integer", uint_value);
     call->withOutputParameterReturning("buffer", buffer_value, sizeof(buffer_value));
-    STRCMP_EQUAL("name -> const char* string: <value>, int integer: <10>, unsigned int unsigned-integer: <         7 (0x00000007)>, "
+    STRCMP_EQUAL("name -> const char* string: <value>, int integer: <10 (0xa)>, unsigned int unsigned-integer: <7 (0x7)>, "
                  "const void* buffer: <output>", call->callToString().asCharString());
 }
 
@@ -564,10 +572,16 @@ TEST_GROUP(MockExpectedCallComposite)
     }
 };
 
+TEST(MockExpectedCallComposite, hasBoolParameter)
+{
+    composite.withParameter("param", true);
+    STRCMP_EQUAL("name -> bool param: <true>", call.callToString().asCharString());
+}
+
 TEST(MockExpectedCallComposite, hasLongIntParameter)
 {
-    composite.withParameter("param", (long int) -1);
-    STRCMP_EQUAL("name -> long int param: <-1>", call.callToString().asCharString());
+    composite.withParameter("param", (long int) 1);
+    STRCMP_EQUAL("name -> long int param: <1 (0x1)>", call.callToString().asCharString());
 }
 
 TEST(MockExpectedCallComposite, hasUnsignedLongIntParameter)
@@ -611,6 +625,19 @@ TEST(MockExpectedCallComposite, hasOutputParameterReturning)
 {
     composite.withOutputParameterReturning("out", (const void*) 0, 1);
     STRCMP_EQUAL("name -> const void* out: <output>", call.callToString().asCharString());
+}
+
+TEST(MockExpectedCallComposite, hasOutputParameterOfTypeReturning)
+{
+    composite.withOutputParameterOfTypeReturning("type", "out", (const void*) 0);
+    STRCMP_EQUAL("name -> type out: <output>", call.callToString().asCharString());
+}
+
+TEST(MockExpectedCallComposite, hasBoolReturnValue)
+{
+    composite.andReturnValue(true);
+    STRCMP_EQUAL("bool", call.returnValue().getType().asCharString());
+    CHECK_EQUAL(true, call.returnValue().getBoolValue());
 }
 
 TEST(MockExpectedCallComposite, hasUnsignedIntReturnValue)
@@ -710,6 +737,7 @@ TEST(MockIgnoredExpectedCall, worksAsItShould)
     ignored.withName("func");
     ignored.withCallOrder(1);
     ignored.onObject((void*) 0);
+    ignored.withBoolParameter("umm", true);
     ignored.withIntParameter("bla", (int) 1);
     ignored.withUnsignedIntParameter("foo", (unsigned int) 1);
     ignored.withLongIntParameter("hey", (long int) 1);
@@ -720,9 +748,11 @@ TEST(MockIgnoredExpectedCall, worksAsItShould)
     ignored.withConstPointerParameter("woo", (const void*) 0);
     ignored.withFunctionPointerParameter("fop", (void(*)()) 0);
     ignored.withMemoryBufferParameter("waa", (const unsigned char*) 0, 0);
-    ignored.withParameterOfType("top", "mytype", (const void*) 0);
-    ignored.withOutputParameterReturning("bar", (const void*) 0, 1);
+    ignored.withParameterOfType( "mytype", "top", (const void*) 0);
+    ignored.withOutputParameterReturning("bar", (void*) 0, 1);
+    ignored.withOutputParameterOfTypeReturning("mytype", "bar", (const void*) 0);
     ignored.ignoreOtherParameters();
+    ignored.andReturnValue(true);
     ignored.andReturnValue((double) 1.0f);
     ignored.andReturnValue((unsigned int) 1);
     ignored.andReturnValue((int) 1);

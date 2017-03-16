@@ -28,7 +28,8 @@
 #include "CppUTest/TestOutput.h"
 #include "CppUTestExt/MockSupport.h"
 #include "CppUTestExt/MockSupportPlugin.h"
-#include "MockFailureTest.h"
+#include "MockFailureReporterForTest.h"
+#include "CppUTest/TestTestingFixture.h"
 
 TEST_GROUP(MockPlugin)
 {
@@ -74,8 +75,8 @@ TEST(MockPlugin, checkExpectationsWorksAlsoWithHierachicalObjects)
     MockFailureReporterInstaller failureReporterInstaller;
 
     MockExpectedCallsListForTest expectations;
-    expectations.addFunction("foobar")->onObject((void*) 1);
-    MockExpectedObjectDidntHappenFailure expectedFailure(test, "foobar", expectations);
+    expectations.addFunction("differentScope::foobar")->onObject((void*) 1);
+    MockExpectedObjectDidntHappenFailure expectedFailure(test, "differentScope::foobar", expectations);
 
     mock("differentScope").expectOneCall("foobar").onObject((void*) 1);
     mock("differentScope").actualCall("foobar");
@@ -149,5 +150,20 @@ TEST(MockPlugin, preTestActionWillEnableMultipleComparatorsToTheGlobalMockSuppor
 
     mock().checkExpectations();
     LONGS_EQUAL(0, result->getFailureCount());
+}
+
+static void _failTwiceFunction()
+{
+    mock().expectOneCall("foobar");
+    FAIL("This failed");
+}
+
+TEST(MockPlugin, shouldNotFailAgainWhenTestAlreadyFailed)
+{
+    TestTestingFixture fixture;
+    fixture.registry_->installPlugin(&plugin);
+    fixture.setTestFunction(_failTwiceFunction);
+    fixture.runAllTests();
+    fixture.assertPrintContains("1 failures, 1 tests, 1 ran, 2 checks,");
 }
 
